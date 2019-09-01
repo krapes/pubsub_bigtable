@@ -1,0 +1,4 @@
+google-cloud-bigtable==0.32.1
+google-cloud-core==1.0.3
+google-cloud-pubsub==0.42.1
+google-cloud-storage==1.16.1

@@ -1,0 +1,75 @@
+service: etlservice # NOTE: Don't put the word "google" in here
+
+provider:
+  name: google
+  stage: ${opt:stage, 'dev'}
+  runtime: python37
+  region: us-central1
+  project: ${opt:project, 'empack-238417'}
+  # The GCF credentials can be a little tricky to set up. Luckily we've documented this for you here:
+  # https://serverless.com/framework/docs/providers/google/guide/credentials/
+  #
+  # the path to the credentials file needs to be absolute
+  credentials: ~/${self:provider.project}.json
+  environment:
+    region: ${self:provider.region}
+    stage: ${self:provider.stage}
+
+plugins:
+  - serverless-google-cloudfunctions
+
+# needs more granular excluding in production as only the serverless provider npm
+# package should be excluded (and not the whole node_modules directory)
+package:
+  exclude:
+    - node_modules/**
+    - .gitignore
+    - .git/**
+
+functions:
+  pubSubReciever:
+    handler: pubSubReciever_${self:provider.stage}
+    events:
+      - event:
+          eventType: providers/cloud.pubsub/eventTypes/topic.publish
+          resource: projects/empack-238417/topics/sensorData_${self:provider.stage}
+
+  simulateAccesoData:
+    handler: simulateAccesoData_${self:provider.stage}
+    events:
+      - http: path
+
+
+
+resources:
+  resources:
+    - type: gcp-types/bigtableadmin-v2:projects.instances
+      name: projects/empack-238417/instances/iotincoming
+      properties:
+        parent: projects/empack-238417
+        instanceId: iotincoming
+        clusters:
+          iotcluster:
+            defaultStorageType: HDD
+            location: projects/empack-238417/locations/us-central1-b
+        instance:
+          displayName: IotIncoming
+          type: DEVELOPMENT
+    - type: gcp-types/bigtableadmin-v2:projects.instances.tables
+      name: incomingraw_${self:provider.stage}
+      properties:
+        parent: projects/empack-238417/instances/iotincoming
+        tableId: incomingraw_${self:provider.stage}
+        table:
+          granularity: MILLIS
+          columnFamilies:
+            event:
+              gcRule:
+                maxNumVersions: 2
+            realTimeStatus:
+              gcRule:
+                maxNumVersions: 2
+    - name: mock_SensorData_${self:provider.stage}
+      type: gcp-types/pubsub-v1:projects.topics
+      properties:
+        topic: sensorData_${self:provider.stage}
