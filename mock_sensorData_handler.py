@@ -17,18 +17,20 @@
 import time
 import gzip
 import logging
+import os
 import argparse
 import datetime
-from google.cloud import pubsub
+import subprocess
+from google.cloud import pubsub, storage
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 stage = os.environ.get('stage', 'dev')
-TOPIC = 'mock_SensorData' + stage
+TOPIC = 'sensorData' + stage
 BUCKET = 'krapes-public'
 FILENAME = 'export_sensor_obs2008.csv.gz'
 INPUT = '/tmp/export_sensor_obs2008.csv.gz'
 
-
+'''
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     storage_client = storage.Client()
@@ -43,7 +45,15 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
 
 
 download_blob(BUCKET, FILENAME, INPUT)
+'''
 
+def get_data():
+  command = "gsutil cp \
+             gs://cloud-training-demos/sandiego/sensor_obs2008.csv.gz {}".format(INPUT)
+  result = subprocess.run(command, stdout=subprocess.PIPE)
+  result = result.stdout.decode("utf-8").replace('\n', ' ')
+
+get_data()
 
 def publish(publisher, topic, events):
    numobs = len(events)
