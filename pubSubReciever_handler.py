@@ -28,8 +28,8 @@ def reverseTimestamp(ts):
 	return str(reverseTS)
 
 def writeToBigTable(table, data):
-	timestamp = datetime.utcnow()
-	timestamp = datetime.strftime(timestamp, TIME_FORMAT)
+
+	timestamp = data['event']['date']
 	rts = reverseTimestamp(timestamp)
 	row_key = '{}'.format(rts).encode()
 	row = table.row(row_key)
@@ -53,13 +53,16 @@ def selectTable():
 def main(event, context):
 
 	data = base64.b64decode(event['data']).decode('utf-8')
-	date, lat, longitud, a, b, c, d = data.split(',')
 	print("DATA: {}".format(data))
+	date, lat, longitud, a, b, c, d = data.split(',')
+
 
 	table = selectTable(context)
 
-	data = {'event': {'latitude': lat,
+	data = {'event': {'date': date,
+					  'latitude': lat,
 					  'longitud': longitud}
+			}
 
 	writeToBigTable(table, data)
 	print("Data Written: {}".format(data))
