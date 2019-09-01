@@ -5,7 +5,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   runtime: python37
   region: us-central1
-  project: ${opt:project, 'empack-238417'}
+  project: ${opt:project, 'UNKNOWN'}
   # The GCF credentials can be a little tricky to set up. Luckily we've documented this for you here:
   # https://serverless.com/framework/docs/providers/google/guide/credentials/
   #

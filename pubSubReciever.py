@@ -4,39 +4,62 @@ Based on blog: https://medium.com/faun/writing-a-pub-sub-stream-to-bigquery-401b
 
 import json
 import base64
+import os
 import datetime
 
 from google.cloud import bigtable
-from google.cloud.bigtable import column_family
-from google.cloud.bigtable import row_filters
+from google.cloud.bigtable import column_family, row_filters
 
-project_id = 'empack-238417'
-instance_id = 'iotincoming'
-table_id = 'incomingraw'
+
+project_id = os.environ.get('GCP_PROJECT', 'UNKNOWN')
+INSTANCE = 'iotincoming'
+TABLE = 'incomingraw'
+TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+STANDIN_SYSMAX = 10**20
 
 client = bigtable.Client(project=project_id, admin=True)
-instance = client.instance(instance_id)
-table = instance.table(table_id)
+instance = client.instance(INSTANCE)
+
+
+def reverseTimestamp(ts):
+	reverseTS = datetime.strptime(ts, TIME_FORMAT)
+	reverseTS = datetime.strftime(reverseTS, '%Y%m%d%H%M%S%f')
+	reverseTS = STANDIN_SYSMAX - int(reverseTS)
+	return str(reverseTS)
+
+def writeToBigTable(table, data):
+	timestamp = datetime.utcnow()
+	timestamp = datetime.strftime(timestamp, TIME_FORMAT)
+	rts = reverseTimestamp(timestamp)
+	row_key = '{}'.format(rts).encode()
+	row = table.row(row_key)
+	for colFamily in data.keys():
+		for key in data[colFamily].keys():
+			row.set_cell(colFamily,
+									key,
+									data[colFamily][key],
+									timestamp=timestamp)
+
+	table.mutate_rows([row])
+	return data
+
+def selectTable():
+	stage = os.environ.get('stage', 'dev')
+	table_id = TABLE + stage
+	table = instance.table(table_id)
+	return table
+
 
 def main(event, context):
-	print("Printing Event")
-	print(event)
-	data = event['data']
-	data = base64.b64decode(data).decode('utf-8')
+
+	data = base64.b64decode(event['data']).decode('utf-8')
 	date, lat, longitud, a, b, c, d = data.split(',')
 	print("DATA: {}".format(data))
 
-	timestamp=datetime.datetime.utcnow()
+	table = selectTable(context)
 
-	row_key = '{}'.format(timestamp).encode()
-	row = table.row(row_key)
-	row.set_cell('lat',
-					'latitude',
-					lat,
-					timestamp=datetime.datetime.utcnow())
-	row.set_cell('long',
-					'longitud',
-					longitud,
-					timestamp=datetime.datetime.utcnow())
-	print(row)
-	table.mutate_rows([row])
+	data = {'event': {'latitude': lat,
+					  'longitud': longitud}
+
+	writeToBigTable(table, data)
+	print("Data Written: {}".format(data))
