@@ -1,7 +1,7 @@
 import os
 
 import pubSubReciever_handler
-import simulate_accesoData
+import mock_sensorData_handler
 
 
 
@@ -14,10 +14,10 @@ def pubSubReciever_prod(event, context):
 	return pubSubReciever_handler.main(event, context)
 
 
-def simulateAccesoData_dev(event):
-	return simulate_accesoData.main(event)
-def simulateAccesoData_test(event):
-	return simulate_accesoData.main(event)
-def simulateAccesoData_prod(event):
-	return simulate_accesoData.main(event)
+def mock_sensorData_dev(event):
+	return mock_sensorData_handler.main(event)
+def mock_sensorData_test(event):
+	return mock_sensorData_handler.main(event)
+def mock_sensorData_prod(event):
+	return mock_sensorData_handler.main(event)
 

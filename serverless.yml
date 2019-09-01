@@ -34,7 +34,7 @@ functions:
           eventType: providers/cloud.pubsub/eventTypes/topic.publish
           resource: projects/empack-238417/topics/sensorData_${self:provider.stage}
 
-  simulateAccesoData:
+  mock_SensorData:
     handler: simulateAccesoData_${self:provider.stage}
     events:
       - http: path
