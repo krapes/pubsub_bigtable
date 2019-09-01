@@ -34,8 +34,8 @@ functions:
           eventType: providers/cloud.pubsub/eventTypes/topic.publish
           resource: projects/empack-238417/topics/sensorData_${self:provider.stage}
 
-  mock_SensorData:
-    handler: simulateAccesoData_${self:provider.stage}
+  mock_sensorData:
+    handler: mock_sensorData_${self:provider.stage}
     events:
       - http: path
 
@@ -69,7 +69,7 @@ resources:
             realTimeStatus:
               gcRule:
                 maxNumVersions: 2
-    - name: mock_SensorData_${self:provider.stage}
+    - name: mock_sensorData_${self:provider.stage}
       type: gcp-types/pubsub-v1:projects.topics
       properties:
         topic: sensorData_${self:provider.stage}
