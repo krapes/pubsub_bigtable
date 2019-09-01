@@ -22,8 +22,28 @@ import datetime
 from google.cloud import pubsub
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
-TOPIC = 'mock_SensorData'
-INPUT = '/home/kerri/Documents/Projects/Odd/coursera/dataflow/export_sensor_obs2008.csv.gz'
+stage = os.environ.get('stage', 'dev')
+TOPIC = 'mock_SensorData' + stage
+BUCKET = 'krapes-public'
+FILENAME = 'export_sensor_obs2008.csv.gz'
+INPUT = '/tmp/export_sensor_obs2008.csv.gz'
+
+
+def download_blob(bucket_name, source_blob_name, destination_file_name):
+    """Downloads a blob from the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+
+    blob.download_to_filename(destination_file_name)
+
+    print('Blob {} downloaded to {}.'.format(
+        source_blob_name,
+        destination_file_name))
+
+
+download_blob(BUCKET, FILENAME, INPUT)
+
 
 def publish(publisher, topic, events):
    numobs = len(events)
@@ -51,6 +71,9 @@ def simulate(topic, ifp, firstObsTime, programStart, speedFactor):
    topublish = list() 
 
    for line in ifp:
+       if i >= limit:
+          print("i: {} -- Breaking Loop".format(i))
+          break
        event_data = line   # entire line of input CSV is the message
        obs_time = get_timestamp(line) # from first column
 
@@ -78,27 +101,48 @@ def peek_timestamp(ifp):
    return get_timestamp(line)
 
 
-if __name__ == '__main__':
-   parser = argparse.ArgumentParser(description='Send sensor data to Cloud Pub/Sub in small groups, simulating real-time behavior')
-   parser.add_argument('--speedFactor', help='Example: 60 implies 1 hour of data sent to Cloud Pub/Sub in 1 minute', required=True, type=float)
-   parser.add_argument('--project', help='Example: --project $DEVSHELL_PROJECT_ID', required=True)
-   args = parser.parse_args()
+def main(event):
 
-   # create Pub/Sub notification topic
-   logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-   publisher = pubsub.PublisherClient()
-   event_type = publisher.topic_path(args.project,TOPIC)
-   try:
-      publisher.get_topic(event_type)
-      logging.info('Reusing pub/sub topic {}'.format(TOPIC))
-   except:
-      publisher.create_topic(event_type)
-      logging.info('Creating pub/sub topic {}'.format(TOPIC))
+    print("Event: {}".format(event))
+    
+    event = event.get_json(silent=True)
+    speedFactor = event.get("speedFactor", 60)
+    project = os.environ.get('GCP_PROJECT', 'UNKNOWN')
+    limit = event.get("limit", 3)
+    print("speedFactor: {}  project: {}  limit: {}".format(speedFactor,
+                                                           project,
+                                                           limit))
 
-   # notify about each line in the input file
-   programStartTime = datetime.datetime.utcnow() 
-   with gzip.open(INPUT, 'rb') as ifp:
-      header = ifp.readline()  # skip header
-      firstObsTime = peek_timestamp(ifp)
-      logging.info('Sending sensor data from {}'.format(firstObsTime))
-      simulate(event_type, ifp, firstObsTime, programStartTime, args.speedFactor)
+    if stage == 'prod':
+        error = "Cannot run simulations in Production Env!!"
+        print(error)
+        raise Exception + error
+
+    # create Pub/Sub notification topic
+    logging.basicConfig(format='%(levelname)s: %(message)s',
+                        level=logging.INFO)
+    publisher = pubsub.PublisherClient()
+    topic = "{}_{}".format(TOPIC, stage)
+    event_type = publisher.topic_path(project, topic)
+    try:
+        publisher.get_topic(event_type)
+        logging.info('Reusing pub/sub topic {}'.format(topic))
+    except Exception:
+        publisher.create_topic(event_type)
+        logging.info('Creating pub/sub topic {}'.format(topic))
+
+    # notify about each line in the input file
+    programStartTime = datetime.datetime.utcnow()
+    with gzip.open(INPUT, 'rb') as ifp:
+        ifp.readline()  # skip header
+        firstObsTime = peek_timestamp(ifp)
+        logging.info('Sending sensor data from {}'.format(firstObsTime))
+        response = simulate(event_type,
+                             ifp,
+                             firstObsTime,
+                             publisher,
+                             programStartTime,
+                             speedFactor,
+                             limit)
+
+    return response
