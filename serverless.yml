@@ -32,7 +32,7 @@ functions:
     events:
       - event:
           eventType: providers/cloud.pubsub/eventTypes/topic.publish
-          resource: projects/empack-238417/topics/sensorData_${self:provider.stage}
+          resource: projects/${self:provider.project}/topics/sensorData_${self:provider.stage}
 
   mock_sensorData:
     handler: mock_sensorData_${self:provider.stage}
@@ -44,21 +44,21 @@ functions:
 resources:
   resources:
     - type: gcp-types/bigtableadmin-v2:projects.instances
-      name: projects/empack-238417/instances/iotincoming
+      name: projects/${self:provider.project}/instances/iotincoming
       properties:
-        parent: projects/empack-238417
+        parent: projects/${self:provider.project}
         instanceId: iotincoming
         clusters:
           iotcluster:
             defaultStorageType: HDD
-            location: projects/empack-238417/locations/us-central1-b
+            location: projects/${self:provider.project}/locations/us-central1-b
         instance:
           displayName: IotIncoming
           type: DEVELOPMENT
     - type: gcp-types/bigtableadmin-v2:projects.instances.tables
       name: incomingraw_${self:provider.stage}
       properties:
-        parent: projects/empack-238417/instances/iotincoming
+        parent: projects/${self:provider.project}/instances/iotincoming
         tableId: incomingraw_${self:provider.stage}
         table:
           granularity: MILLIS
