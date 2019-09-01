@@ -66,9 +66,6 @@ resources:
             event:
               gcRule:
                 maxNumVersions: 2
-            realTimeStatus:
-              gcRule:
-                maxNumVersions: 2
     - name: mock_sensorData_${self:provider.stage}
       type: gcp-types/pubsub-v1:projects.topics
       properties:
