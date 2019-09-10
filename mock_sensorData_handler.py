@@ -25,12 +25,12 @@ from google.cloud import pubsub, storage
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 stage = os.environ.get('stage', 'dev')
-TOPIC = 'sensorData' + stage
-BUCKET = 'krapes-public'
-FILENAME = 'export_sensor_obs2008.csv.gz'
+TOPIC = 'sensorData'
+BUCKET = 'cloud-training-demos'
+FILENAME = 'sandiego/sensor_obs2008.csv.gz'
 INPUT = '/tmp/export_sensor_obs2008.csv.gz'
 
-'''
+
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     storage_client = storage.Client()
@@ -45,15 +45,8 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
 
 
 download_blob(BUCKET, FILENAME, INPUT)
-'''
 
-def get_data():
-  command = "gsutil cp \
-             gs://cloud-training-demos/sandiego/sensor_obs2008.csv.gz {}".format(INPUT)
-  result = subprocess.run(command, stdout=subprocess.PIPE)
-  result = result.stdout.decode("utf-8").replace('\n', ' ')
 
-get_data()
 
 def publish(publisher, topic, events):
    numobs = len(events)
@@ -70,7 +63,8 @@ def get_timestamp(line):
    timestamp = line.split(',')[0]
    return datetime.datetime.strptime(timestamp, TIME_FORMAT)
 
-def simulate(topic, ifp, firstObsTime, programStart, speedFactor):
+def simulate(topic, ifp, firstObsTime, publisher,
+             programStart, speedFactor, limit):
    # sleep computation
    def compute_sleep_secs(obs_time):
         time_elapsed = (datetime.datetime.utcnow() - programStart).seconds
@@ -80,7 +74,7 @@ def simulate(topic, ifp, firstObsTime, programStart, speedFactor):
 
    topublish = list() 
 
-   for line in ifp:
+   for i, line in enumerate(ifp):
        if i >= limit:
           print("i: {} -- Breaking Loop".format(i))
           break
@@ -102,6 +96,9 @@ def simulate(topic, ifp, firstObsTime, programStart, speedFactor):
 
    # left-over records; notify again
    publish(publisher, topic, topublish)
+   response = "Completed {} events".format(i)
+   print(response)
+   return response
 
 def peek_timestamp(ifp):
    # peek ahead to next line, get timestamp and go back

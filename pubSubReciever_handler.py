@@ -5,7 +5,7 @@ Based on blog: https://medium.com/faun/writing-a-pub-sub-stream-to-bigquery-401b
 import json
 import base64
 import os
-import datetime
+from datetime import datetime
 
 from google.cloud import bigtable
 from google.cloud.bigtable import column_family, row_filters
@@ -13,7 +13,7 @@ from google.cloud.bigtable import column_family, row_filters
 
 project_id = os.environ.get('GCP_PROJECT', 'UNKNOWN')
 INSTANCE = 'iotincoming'
-TABLE = 'incomingraw'
+TABLE = 'incomingraw_'
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 STANDIN_SYSMAX = 10**20
 
@@ -37,8 +37,7 @@ def writeToBigTable(table, data):
 		for key in data[colFamily].keys():
 			row.set_cell(colFamily,
 									key,
-									data[colFamily][key],
-									timestamp=timestamp)
+									data[colFamily][key])
 
 	table.mutate_rows([row])
 	return data
@@ -57,7 +56,7 @@ def main(event, context):
 	date, lat, longitud, a, b, c, d = data.split(',')
 
 
-	table = selectTable(context)
+	table = selectTable()
 
 	data = {'event': {'date': date,
 					  'latitude': lat,
